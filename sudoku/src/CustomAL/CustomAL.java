@@ -165,6 +165,7 @@ public class CustomAL<E> {
 		}
 		return output;
 	}
+	
 	// Private methods
 
 	@SuppressWarnings("unchecked")
