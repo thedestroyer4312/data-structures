@@ -33,4 +33,25 @@ class TestGrid{
 		assertEquals(9, g1.getValue());
 		assertEquals(4, g2.getValue());
 	}
+	
+	@Test
+	public void testIsBlank(){
+		Grid g1 = new Grid();
+		Grid g2 = new Grid(4);
+		assertTrue(g1.isBlank());
+		g1.setValue(4);
+		assertFalse(g2.isBlank());
+	}
+	
+	@Test
+	public void testResetValue(){
+		Grid g1 = new Grid();
+		Grid g2 = new Grid(4);
+		assertFalse(g2.resetValue());
+		assertEquals(4, g2.getValue());
+		g1.setValue(8);
+		assertEquals(8, g1.getValue());
+		g1.resetValue();
+		assertEquals(0, g1.getValue());
+	}
 }

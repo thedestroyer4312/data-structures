@@ -7,17 +7,19 @@ package sudoku;
  */
 public class Grid{
 
+	public static final int DEFAULTVALUE = 0;
+
 	private int val;
 	public final boolean isFixed;
 
 	// Constructors
 
 	/**
-	 * Initializes a blank, mutable grid space (val is -1)
+	 * Initializes a blank, mutable grid space
 	 */
 	public Grid(){
-		val = -1;
 		isFixed = false;
+		val = DEFAULTVALUE;
 	}
 
 	/**
@@ -47,15 +49,42 @@ public class Grid{
 	// Getter and setter methods
 
 	/**
-	 * Returns the integer value. If it is not assigned, should be -1
+	 * Returns the integer value. If it is not assigned, should be the default value
 	 * @return val
 	 */
 	public int getValue(){
 		return val;
 	}
 
-	public void setValue(int num){
-		val = num;
+	/**
+	 * Sets the integer value of the Grid. Will not do anything if the grid is fixed
+	 * @param num an input number assumed to be 1-9
+	 * @return true if it was changed, false if not (fixed Grid)
+	 */
+	public boolean setValue(int num){
+		if(!isFixed){
+			this.val = num;
+		}
+		return !isFixed;
+	}
+
+	/**
+	 * Checks if the Grid is blank, not taking into account whether it is mutable or fixed
+	 * @return true if the Grid value is not the default, false otherwise
+	 */
+	public boolean isBlank(){
+		return val == DEFAULTVALUE;
+	}
+
+	/**
+	 * Resets the Grid's value to the default value if it is mutable. If it is fixed, does nothing
+	 * @return true if the value was changed, false otherwise
+	 */
+	public boolean resetValue(){
+		if(!isFixed){
+			val = DEFAULTVALUE;
+		}
+		return !isFixed;
 	}
 
 	// Equals and toString
@@ -70,14 +99,14 @@ public class Grid{
 	}
 
 	/**
-	 * @return [val] if locked, () if val is -1, (val) if val is not -1
+	 * @return [val] if locked, () if val is default, (val) if val is not default
 	 */
 	@Override
 	public String toString(){
 		if(isFixed){
 			return "[" + val + "]";
 		}else{
-			return "(" + (val == -1 ? "" : "" + val) + ")";
+			return "(" + (val == DEFAULTVALUE ? "" : "" + val) + ")";
 		}
 	}
 

@@ -2,6 +2,7 @@ package sudoku;
 
 import java.util.List;
 import java.util.ArrayList;
+
 // TODO: flesh out solving algorithm and write unit test cases, develop way to easily make sudoku boards
 public class SudokuSolve{
 
@@ -10,9 +11,9 @@ public class SudokuSolve{
 
 	private class Node{
 
-		final int row;
-		final int col;
-		final Grid grid;
+		private final int row;
+		private final int col;
+		private final Grid grid;
 
 		private Node(int row, int col, Grid g){
 			this.grid = g;
@@ -20,12 +21,6 @@ public class SudokuSolve{
 			this.col = col;
 		}
 
-	}
-
-	// Default null value constructor
-	public SudokuSolve(){
-		this.board = null;
-		this.squares = null;
 	}
 
 	// Construct with an input board
@@ -50,37 +45,49 @@ public class SudokuSolve{
 		boolean solveable = true;
 		fillSquares();
 
-		// board is impossible to solve if no value works for the first square
-		for(int i = 0; i < squares.size();){
+		// NOTE: board is impossible to solve if no value works for the first square
+
+		int i = 0;
+		boolean backtrack = false;
+		while(i < squares.size() && i >= 0){
+			// initialize our working values
 			Grid g = squares.get(i).grid;
 			int row = squares.get(i).row;
 			int col = squares.get(i).col;
-			// check if this is impossible
-			if(i == 0 && g.getValue() == 9 && !g.isFixed){
+
+			// check if the board is impossible to solve (backtracked to first Grid and impossible)
+			if(i == 0 && backtrack && g.getValue() == 9){
 				solveable = false;
 				break;
 			}
 
-			// check if this grid is blank (value = -1), then set it to 1
-			if(g.getValue() == -1){
+			// check if this Grid is blank; if so, then set it to 1
+			if(g.isBlank()){
 				g.setValue(1);
 			}
 
-			// now, we modify the square and test if it works
-			boolean reset = false;
+			/* If we just came back to this square (backtracked), then we know the value of this Grid does not work
+			 * for successive Grids. Increment the value of this Grid by 1. */
+			if(backtrack){
+				g.setValue(g.getValue() + 1);
+			}
+
+			// now, increment the Grid value until we find one that works
+			backtrack = false;
 			while(!validate(row, col)){
-				// when the value is 9, break and reset the grid
+				// when the value is 9, break and reset the grid -- we need to go back
 				if(g.getValue() == 9){
-					g.setValue(-1);
+					g.resetValue();
 					// go back to the previous square
 					i--;
-					reset = true;
+					backtrack = true;
 					break;
 				}
 				g.setValue(g.getValue() + 1);
-				if(!reset){
-					i++;
-				}
+			}
+			// if the value works, then proceed to the next square
+			if(!backtrack){
+				i++;
 			}
 		}
 		return solveable;
@@ -96,8 +103,8 @@ public class SudokuSolve{
 		for(int i = 0; i < board.length; i++){
 			for(int j = 0; j < board.length; j++){
 				Grid g = board[i][j];
-				// if it's not empty, add it to the list
-				if(g.getValue() != -1){
+				// if it's empty, add it to the list
+				if(g.isBlank()){
 					squares.add(new Node(i, j, g));
 				}
 			}
@@ -115,7 +122,7 @@ public class SudokuSolve{
 	 */
 	public boolean validate(int row, int col){
 		int gridValue = board[row][col].getValue();
-		boolean validValue = (gridValue >= 1 && gridValue <= 9) || gridValue == -1;
+		boolean validValue = (gridValue >= 1 && gridValue <= 9) || gridValue == Grid.DEFAULTVALUE;
 		return validValue && checkRow(row) && checkColumn(col) && checkSquare(row, col);
 	}
 
@@ -129,9 +136,9 @@ public class SudokuSolve{
 		boolean valid = true;
 		for(int i = 0; i < board[row].length; i++){
 			Grid g = board[row][i];
-			int val = g.getValue();
 			// if the grid isn't blank
-			if(val != -1){
+			if(!g.isBlank()){
+				int val = g.getValue();
 				// if it already exists, break -- violation of sudoku rules. Otherwise, add it
 				if(nums[val]){
 					valid = false;
@@ -154,9 +161,9 @@ public class SudokuSolve{
 		boolean valid = true;
 		for(int i = 0; i < board.length; i++){
 			Grid g = board[i][col];
-			int val = g.getValue();
 			// if the grid isn't blank
-			if(val != -1){
+			if(!g.isBlank()){
+				int val = g.getValue();
 				// if it already exists, break -- violation of sudoku rules. Otherwise, add it
 				if(nums[val]){
 					valid = false;
@@ -183,9 +190,9 @@ public class SudokuSolve{
 		for(int i = 0; i < 3; i++){
 			for(int j = 0; j < 3; j++){
 				Grid g = board[row + i][col + j];
-				int val = g.getValue();
-				// check if it exists
-				if(val != -1){
+				// if the grid isn't blank
+				if(!g.isBlank()){
+					int val = g.getValue();
 					// if it already exists, break -- violation of sudoku rules. Otherwise, add it
 					if(nums[val]){
 						valid = false;
