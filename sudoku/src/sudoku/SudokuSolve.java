@@ -2,21 +2,26 @@ package sudoku;
 
 import java.util.List;
 import java.util.ArrayList;
+import util.Boards;
 
-// TODO: flesh out solving algorithm and write unit test cases, develop way to easily make sudoku boards
+/**
+ * Solves sudoku boards using a simple backtracking algorithm
+ * @author Trevor Tsai
+ * @version 6/18/2020
+ */
 public class SudokuSolve{
 
-	private Grid[][] board;
+	private Square[][] board;
 	private List<Node> squares; // used to hold the squares in order of modification
 
 	private class Node{
 
 		private final int row;
 		private final int col;
-		private final Grid grid;
+		private final Square square;
 
-		private Node(int row, int col, Grid g){
-			this.grid = g;
+		private Node(int row, int col, Square s){
+			this.square = s;
 			this.row = row;
 			this.col = col;
 		}
@@ -25,13 +30,13 @@ public class SudokuSolve{
 
 	// Construct with an input board
 	/**
-	 * Constructs a new SudokuSolve instance with an input board
+	 * Constructs a new SudokuSolve instance with a copy of an input board
 	 * @param inputBoard An input board representing a partially solved Sudoku board
 	 */
-	public SudokuSolve(Grid[][] inputBoard){
-		if(!isValidBoard(inputBoard))
+	public SudokuSolve(Square[][] inputBoard){
+		if(!Boards.isValidBoard(inputBoard))
 			throw new IllegalArgumentException("Please enter a board that represents a Sudoku board.");
-		this.board = inputBoard;
+		this.board = Boards.makeBoard(inputBoard);
 		squares = null;
 	}
 
@@ -49,46 +54,62 @@ public class SudokuSolve{
 
 		int i = 0;
 		boolean backtrack = false;
+
+		long iteration = 1;
+
 		while(i < squares.size() && i >= 0){
 			// initialize our working values
-			Grid g = squares.get(i).grid;
+			Square s = squares.get(i).square;
 			int row = squares.get(i).row;
 			int col = squares.get(i).col;
 
-			// check if the board is impossible to solve (backtracked to first Grid and impossible)
-			if(i == 0 && backtrack && g.getValue() == 9){
+			// check if the board is impossible to solve (backtracked to first Square and impossible)
+			if(i == 0 && backtrack && s.getValue() == Square.MAXVALUE){
 				solveable = false;
 				break;
 			}
 
-			// check if this Grid is blank; if so, then set it to 1
-			if(g.isBlank()){
-				g.setValue(1);
+			// check if this Square is blank; if so, then set it to its minimum value
+			if(s.isBlank()){
+				s.setValue(Square.MINVALUE);
 			}
 
-			/* If we just came back to this square (backtracked), then we know the value of this Grid does not work
-			 * for successive Grids. Increment the value of this Grid by 1. */
+			/* If we just came back to this square (backtracked), then we know the value of this Square does not work
+			 * for successive Squares. Increment the value of this Square by 1 unless it is max. Then, do not modify
+			 * it. It will catch the maximum value and reset it later on. */
 			if(backtrack){
-				g.setValue(g.getValue() + 1);
+				if(s.getValue() == Square.MAXVALUE){
+					s.resetValue();
+					i--;
+					continue;
+				}
+				s.setValue(s.getValue() + 1);
 			}
 
-			// now, increment the Grid value until we find one that works
+			// now, increment the Square value until we find one that works and reset the backtrack
 			backtrack = false;
 			while(!validate(row, col)){
-				// when the value is 9, break and reset the grid -- we need to go back
-				if(g.getValue() == 9){
-					g.resetValue();
+				// when the value is 9, break and reset the Square -- it doesn't work, so we must backtrack
+				if(s.getValue() == Square.MAXVALUE){
+					s.resetValue();
 					// go back to the previous square
 					i--;
 					backtrack = true;
 					break;
 				}
-				g.setValue(g.getValue() + 1);
+				s.setValue(s.getValue() + 1);
 			}
 			// if the value works, then proceed to the next square
 			if(!backtrack){
 				i++;
 			}
+
+			System.out.println("index " + i);
+			// PRINT WORKING CONDITION OF THE BOARD (TESTING COMMENTS)
+			System.out.println(Boards.toString(this.board));
+			System.out.println("Iteration " + iteration + " -----------------------");
+			// ----------------------------------------------
+			iteration++;
 		}
 		return solveable;
 	}
@@ -99,10 +120,10 @@ public class SudokuSolve{
 	 * squares
 	 */
 	private void fillSquares(){
-		this.squares = new ArrayList<Node>(81);
-		for(int i = 0; i < board.length; i++){
-			for(int j = 0; j < board.length; j++){
-				Grid g = board[i][j];
+		this.squares = new ArrayList<Node>(board.length * board.length);
+		for(int i = board.length - 1; i >= 0; i--){
+			for(int j = board.length - 1; j >= 0; j--){
+				Square g = board[i][j];
 				// if it's empty, add it to the list
 				if(g.isBlank()){
 					squares.add(new Node(i, j, g));
@@ -114,16 +135,16 @@ public class SudokuSolve{
 	// METHODS TO CHECK BOARD CORRECTNESS
 
 	/**
-	 * Checks for board validiy at a particular position (row,col) where both are indexed from 0
+	 * Checks for board validity at a particular position (row,col) where both are indexed from 0
 	 * Checks the row, column, and the square that the position is in
 	 * @param row The row index of the position
 	 * @param col The column index of the position
 	 * @return false if the rules are violated, true otherwise
 	 */
 	public boolean validate(int row, int col){
-		int gridValue = board[row][col].getValue();
-		boolean validValue = (gridValue >= 1 && gridValue <= 9) || gridValue == Grid.DEFAULTVALUE;
-		return validValue && checkRow(row) && checkColumn(col) && checkSquare(row, col);
+		System.out.println("coordinates: (" + row + "," + col + ")");
+		System.out.println("value: " + board[row][col].getValue());
+		return checkRow(row) && checkColumn(col) && checkSquare(row, col);
 	}
 
 	/**
@@ -132,19 +153,19 @@ public class SudokuSolve{
 	 * @return true if the row has 1 or less of every number 1-9, false otherwise
 	 */
 	public boolean checkRow(int row){
-		boolean[] nums = new boolean[10];
+		boolean[] nums = new boolean[board.length];
 		boolean valid = true;
 		for(int i = 0; i < board[row].length; i++){
-			Grid g = board[row][i];
-			// if the grid isn't blank
+			Square g = board[row][i];
+			// if the Square isn't blank
 			if(!g.isBlank()){
 				int val = g.getValue();
 				// if it already exists, break -- violation of sudoku rules. Otherwise, add it
-				if(nums[val]){
+				if(nums[val - 1]){
 					valid = false;
 					break;
 				}else{
-					nums[val] = true;
+					nums[val - 1] = true;
 				}
 			}
 		}
@@ -157,19 +178,19 @@ public class SudokuSolve{
 	 * @return true if the column has 1 or less of every number 1-9, false otherwise
 	 */
 	public boolean checkColumn(int col){
-		boolean[] nums = new boolean[10];
+		boolean[] nums = new boolean[board.length];
 		boolean valid = true;
 		for(int i = 0; i < board.length; i++){
-			Grid g = board[i][col];
-			// if the grid isn't blank
+			Square g = board[i][col];
+			// if the Square isn't blank
 			if(!g.isBlank()){
 				int val = g.getValue();
 				// if it already exists, break -- violation of sudoku rules. Otherwise, add it
-				if(nums[val]){
+				if(nums[val - 1]){
 					valid = false;
 					break;
 				}else{
-					nums[val] = true;
+					nums[val - 1] = true;
 				}
 			}
 		}
@@ -177,28 +198,28 @@ public class SudokuSolve{
 	}
 
 	/**
-	 * Checks if the square that a given Grid at position (row,col) is in violates the sudoku rules
+	 * Checks if the square that a given Square at position (row,col) is in violates the sudoku rules
 	 * @param row The row index (indexed from 0)
 	 * @param col The column index (indexed from 0)
 	 * @return true if the square adheres to the rules of sudoku, false if it violates the rules
 	 */
 	public boolean checkSquare(int row, int col){
-		row /= 3;
-		col /= 3;
-		boolean[] nums = new boolean[10];
+		row = (row / 3) * 3;
+		col = (row / 3) * 3;
+		boolean[] nums = new boolean[board.length];
 		boolean valid = true;
 		for(int i = 0; i < 3; i++){
 			for(int j = 0; j < 3; j++){
-				Grid g = board[row + i][col + j];
-				// if the grid isn't blank
+				Square g = board[row + i][col + j];
+				// if the Square isn't blank
 				if(!g.isBlank()){
 					int val = g.getValue();
 					// if it already exists, break -- violation of sudoku rules. Otherwise, add it
-					if(nums[val]){
+					if(nums[val - 1]){
 						valid = false;
 						break;
 					}else{
-						nums[val] = true;
+						nums[val - 1] = true;
 					}
 				}
 			}
@@ -206,80 +227,18 @@ public class SudokuSolve{
 		return valid;
 	}
 
-	// UTILITY METHODS
-
-	/**
-	 * Returns a String representation of the board
-	 * @param board An input Grid[][] representing a sudoku board
-	 * @return A string separated by spaces to appear like a grid, denoting locked and fixed numbers
-	 * as well as empty numbers
-	 */
-	public static String toString(Grid[][] board){
-		String output = "";
-		for(Grid[] row : board){
-			for(Grid g : row){
-				output += g + " ";
-			}
-			output = output.trim() + "\n";
-		}
-		return output.trim();
-	}
-
-	/**
-	 * Checks if a Grid[][] representing a sudoku board is legitimately constructed (not if it is solveable)
-	 * Verifies if the board is of the right dimensions and if every Grid is initialized (i.e. not null)
-	 * @param board An input Grid[][] representing a sudoku board
-	 * @return true if the board is legitimately constructed, false otherwise
-	 */
-	public static boolean isValidBoard(Grid[][] board){
-		if(board == null)
-			return false;
-		// first, check that the board dimensions are correct
-		boolean validDimensions = board.length == 9;
-		for(Grid[] row : board){
-			if(row == null || row.length != 9){
-				validDimensions = false;
-				break;
-			}
-		}
-		boolean noNullGrids = !validDimensions ? false : true;
-		if(noNullGrids){
-			for(Grid[] row : board){
-				for(Grid g : row){
-					if(g == null){
-						noNullGrids = false;
-						break;
-					}
-				}
-			}
-		}
-		return validDimensions && noNullGrids;
-	}
-
 	/**
 	 * Returns a copy of the board instance variable in its current state
-	 * @return a Grid[][] representing the board as it is right now
+	 * @return a Square[][] representing the board as it is right now
 	 */
-	public Grid[][] getBoard(){
-		Grid[][] copy = new Grid[9][9];
-		for(int i = 0; i < copy.length; i++){
-			copy[i] = new Grid[9];
-		}
+	public Square[][] getBoard(){
+		int length = board.length;
+		Square[][] copy = new Square[length][length];
 		for(int i = 0; i < copy.length; i++){
 			for(int j = 0; j < copy.length; j++){
-				copy[i][j] = new Grid(this.board[i][j]);
+				copy[i][j] = new Square(this.board[i][j]);
 			}
 		}
 		return copy;
-	}
-
-	// TESTING METHODS
-
-	/**
-	 * Returns the squares instance variable in its current state
-	 * @return the squares instance variable that represents the squares visited
-	 */
-	public List<Node> getSquares(){
-		return squares;
 	}
 }
